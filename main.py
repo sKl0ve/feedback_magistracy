@@ -18,7 +18,10 @@ GROUPS = {
     "10.04.01_04" : [],
     "38.04.01_30" : [],
 }
-DISCIPLINES = {1 : {}, 2 : {}, 3 : {}, 4 : {}}
+DISCIPLINES = {1 : ['Ин.яз. в проф. коммуникации', 'Цифровые ресурсы в НИ', 'Управление проектами', 'Верификация алгоритмов и систем', 'Построение ИТ инфраструктуры', 'ИТ инфраструктура предприятия', 'Внедрение и сопровождение ПП', 'Ознакомительная практика'],
+               2 : [], 
+               3 : [], 
+               4 : []}
 QUESTIONS = {}
 
 def read_file(file_name):
@@ -65,15 +68,23 @@ def survey(callback):
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
         # временно, пока не внесены данные о других направлениях
         keyboard = specializations_buttons()
-        bot.send_message(callback.message.chat.id, 'Опрос для этого направления находится в разработка.\nСейчас доступно направление ИТ-инфраструктура предприятия', reply_markup=keyboard)
+        bot.send_message(callback.message.chat.id, 'Опрос для этого направления находится в разработке.\nСейчас доступно направление ИТ-инфраструктура предприятия', reply_markup=keyboard)
     elif callback.data == '1_course':
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
-        bot.send_message(callback.message.chat.id, 'Ты выбрал группу 5140904/40401')
+        semester_choice(callback)
     elif callback.data == '2_course':
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
         # временно, пока не внесены данные о других группах
         keyboard = group_code_buttons('09.04.04_04') 
-        bot.send_message(callback.message.chat.id, 'Опрос для этой группы находится в разработка.\nСейчас доступен опрос для группы 5140904/40401', reply_markup=keyboard)
+        bot.send_message(callback.message.chat.id, 'Опрос для этой группы находится в разработке.\nСейчас доступен опрос для группы 5140904/40401', reply_markup=keyboard)
+    elif callback.data == '1_semester':
+        bot.delete_message(callback.message.chat.id, callback.message.message_id)
+        print(callback)
+        discplines_choice(callback) 
+    # elif callback.data == '2_semester' or callback.data == '3_semester' or callback.data == '4_semester':
+    #     bot.delete_message(callback.message.chat.id, callback.message.message_id)
+    #     keyboard = semester_choice('1_course') 
+    #     bot.send_message(callback.message.chat.id, 'Опрос для этого семестра находится в разработке.\nСейчас доступен опрос для 1-го семетра', reply_markup=keyboard)
         
         
 def register_fio(message):
@@ -89,6 +100,22 @@ def register_fio(message):
     bot.send_message(message.chat.id, 'Отлично! Теперь ты можешь пройти опрос о качестве обучения', reply_markup=keyboard)
 
 
+def semester_choice(callback):
+    keyboard = types.InlineKeyboardMarkup(row_width=1)
+    for key in DISCIPLINES.keys():
+        callback_message = str(key) + '_semester'
+        keyboard.add(types.InlineKeyboardButton(key, callback_data=callback_message))
+    bot.send_message(callback.message.chat.id, 'Ты выбрал группу 5140904/40401.\n\nО каком семестре ты хочешь оставить отзыв?', reply_markup=keyboard)
+    
+               
+def discplines_choice(callback):
+    callback_to_str = str(callback.data)
+    semester = callback_to_str[:callback_to_str.find('_')]
+    semester_to_int = int(semester)
+    keyboard = discplines_button(semester_to_int)
+    bot.send_message(callback.message.chat.id, f'Ты выбрал {semester} семестр.\n\nВыбери дисциплину на которую хочешь оставить отзыв.', reply_markup=keyboard)
+
+
 def specializations_buttons():
     keyboard = types.InlineKeyboardMarkup(row_width=1)
     for key, value in SPECIALIZATIONS.items():
@@ -96,13 +123,20 @@ def specializations_buttons():
         keyboard.add(types.InlineKeyboardButton(value, callback_data = callback_message))
     return keyboard
     
-        
+    
 def group_code_buttons(group_code):
     keyboard = types.InlineKeyboardMarkup(row_width=1)
     for group in GROUPS[group_code]:
         callback_message = str(GROUPS[group_code].index(group)+1) + '_course'
-        print(callback_message)
         keyboard.add(types.InlineKeyboardButton(group, callback_data = callback_message))
+    return keyboard
+
+
+def discplines_button(semester):
+    keyboard = types.InlineKeyboardMarkup(row_width=1)
+    for discipline in DISCIPLINES[semester]:
+        #callback_message = discipline
+        keyboard.add(types.InlineKeyboardButton(discipline, callback_data = discipline))
     return keyboard
 
 bot.infinity_polling(timeout=10, long_polling_timeout = 5)
