@@ -18,10 +18,10 @@ GROUPS = {
     "10.04.01_04" : {},
     "38.04.01_30" : {},
 }
-DISCIPLINES = {1 : ['Ин.яз. в проф. коммуникации', 'Цифровые ресурсы в НИ', 'Управление проектами', 'Верификация алгоритмов и систем', 'Построение ИТ инфраструктуры', 'ИТ инфраструктура предприятия', 'Внедрение и сопровождение ПП', 'Ознакомительная практика'],
-               2 : [], 
-               3 : [], 
-               4 : []}
+DISCIPLINES = {"1" : ['Ин.яз. в проф. коммуникации', 'Цифровые ресурсы в НИ', 'Управление проектами', 'Верификация алгоритмов и систем', 'Построение ИТ инфраструктуры', 'ИТ инфраструктура предприятия', 'Внедрение и сопровождение ПП', 'Ознакомительная практика'],
+               "2" : [], 
+               "3" : [], 
+               "4" : []}
 QUESTIONS = {}
 
 def read_file(file_name):
@@ -38,6 +38,7 @@ def main(message):
     cur.execute('CREATE TABLE IF NOT EXISTS education (id integer primary key, chatid integer, semester text, discipline text, question1 text, question2 text, question3 text, question4 text, question5 text, FOREIGN KEY(chatid) REFERENCES student(chatid))')
     cur.execute('CREATE TABLE IF NOT EXISTS practice (id integer primary key, chatid integer, semester text, question1 text, question2 text, question3 text, question4 text, question5 text, FOREIGN KEY(chatid) REFERENCES student(chatid))')
     cur.execute('INSERT OR IGNORE INTO student (chatid, username) VALUES (%d, "%s")' % (message.chat.id, message.chat.username))
+    cur.execute('INSERT OR IGNORE INTO practice (chatid) VALUES (%d)' % message.chat.id)
     connect.commit()
     check_user = cur.execute('SELECT fio, specialization, ciphergroup FROM student WHERE chatid= %d' % message.chat.id).fetchone()
     cur.close()
@@ -95,8 +96,17 @@ def survey(callback):
         keyboard = group_code_buttons('09.04.04_04') 
         bot.send_message(callback.message.chat.id, 'Опрос для этой группы находится в разработке.\nСейчас доступен опрос для группы 5140904/40401', reply_markup=keyboard)
     elif callback.data == '1_semester':
+        semester = callback.data[:callback.data.find('_')]
+        connect = sqlite3.connect('feedback.sql')
+        cur = connect.cursor()
+        check = cur.execute('SELECT * FROM education WHERE chatid = %d AND semester = "%s" AND discipline IS NULL' % (callback.message.chat.id, semester))
+        if len(check.fetchall()) == 0:
+            cur.execute('INSERT OR IGNORE INTO education (id, chatid, semester) VALUES (NULL, %d, %s)' % (callback.message.chat.id, semester))
+        connect.commit()
+        cur.close()
+        connect.close()
         bot.delete_message(callback.message.chat.id, callback.message.message_id) 
-        discplines_choice(callback) 
+        discplines_choice(callback, semester) 
     # elif callback.data == '2_semester' or callback.data == '3_semester' or callback.data == '4_semester':
     #     bot.delete_message(callback.message.chat.id, callback.message.message_id)
     #     keyboard = semester_choice('1_course') 
@@ -119,7 +129,6 @@ def registration(callback):
     bot.register_next_step_handler(callback.message, register_fio)
 
   
-        
 def specialization_choice(callback):
     keyboard = specializations_buttons()
     bot.send_message(callback.chat.id, "Выберите ваше направление:", reply_markup=keyboard)       
@@ -128,16 +137,13 @@ def specialization_choice(callback):
 def semester_choice(callback):
     keyboard = types.InlineKeyboardMarkup(row_width=1)
     for key in DISCIPLINES.keys():
-        callback_message = str(key) + '_semester'
+        callback_message = key + '_semester'
         keyboard.add(types.InlineKeyboardButton(key, callback_data=callback_message))
     bot.send_message(callback.message.chat.id, 'О каком семестре ты хочешь оставить отзыв?', reply_markup=keyboard)
     
                
-def discplines_choice(callback):
-    callback_to_str = str(callback.data)
-    semester = callback_to_str[:callback_to_str.find('_')]
-    semester_to_int = int(semester)
-    keyboard = discplines_button(semester_to_int)
+def discplines_choice(callback, semester):
+    keyboard = discplines_button(semester)
     bot.send_message(callback.message.chat.id, f'Ты выбрал {semester} семестр.\n\nВыбери дисциплину на которую хочешь оставить отзыв.', reply_markup=keyboard)
 
 
